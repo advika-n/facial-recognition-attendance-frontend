@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useData } from "@/app/store/dataStore";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 const THEORY_SLOTS = [
   "A1","A2","B1","B2","C1","C2","D1","D2","E1","E2","F1","F2","G1","G2",

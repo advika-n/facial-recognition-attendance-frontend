@@ -1,20 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useData } from "@/app/store/dataStore";
+import { useRouter } from "next/navigation";
 
-const todaysClasses = [
-  { classId: "CH202526010001", course: "Data Structures", section: "CSE-A", slot: "A1", room: "301", type: "Theory" },
-  { classId: "CH202526010002", course: "DS Lab", section: "CSE-A", slot: "L31", room: "Lab3", type: "Lab" },
-  { classId: "CH202526010003", course: "DS Tutorial", section: "CSE-A", slot: "TD1", room: "305", type: "Tutorial" },
-];
+const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function ProfessorPage() {
+  const { currentUser } = useData();
+  const router = useRouter();
+  const [todaysClasses, setTodaysClasses] = useState<any[]>([]);
   const [activeSession, setActiveSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const startAttendance = (c: any) => {
-    setActiveSession({ ...c, startTime: Date.now() });
-  };
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "professor") {
+      router.push("/login");
+      return;
+    }
 
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    fetch(`${API}/api/timetable/`)
+      .then(r => r.json())
+      .then(data => {
+        const filtered = data
+          .filter((t: any) => t.day === today)
+          .map((t: any) => ({
+            classId: t.class_id,
+            course: t.course_name,
+            slot: t.slot,
+            room: t.classroom,
+            type: t.slot_type,
+          }));
+        setTodaysClasses(filtered);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [currentUser]);
+
+  const startAttendance = (c: any) => setActiveSession({ ...c, startTime: Date.now() });
   const endSession = () => setActiveSession(null);
 
   return (
@@ -25,7 +49,9 @@ export default function ProfessorPage() {
           <h1 style={{ fontFamily: "Syne", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
             Professor Dashboard
           </h1>
-          <p style={{ color: "var(--text-muted)", marginTop: 4, fontSize: 14 }}>Dr. Rao · CSE Department</p>
+          <p style={{ color: "var(--text-muted)", marginTop: 4, fontSize: 14 }}>
+            {currentUser?.name} · {currentUser?.department}
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <span className="badge badge-blue">Professor</span>
@@ -76,52 +102,62 @@ export default function ProfessorPage() {
         <h2 style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
           Today's Schedule
         </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {todaysClasses.map((c) => {
-            const isActive = activeSession?.classId === c.classId;
-            return (
-              <div key={c.classId} style={{
-                background: isActive ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
-                border: `1px solid ${isActive ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
-                borderRadius: 14, padding: "18px 24px",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                transition: "all 0.2s"
-              }}>
-                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                  <div style={{
-                    width: 48, height: 48, borderRadius: 12,
-                    background: c.type === "Lab" ? "var(--accent-purple-dim)" : c.type === "Tutorial" ? "var(--accent-amber-dim)" : "var(--accent-blue-dim)",
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0
-                  }}>
-                    {c.type === "Lab" ? "⚗" : c.type === "Tutorial" ? "◈" : "▦"}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{c.course}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", gap: 8 }}>
-                      <span>{c.section}</span>
-                      <span>·</span>
-                      <span style={{ fontFamily: "monospace", color: "var(--accent-blue)" }}>{c.slot}</span>
-                      <span>·</span>
-                      <span>Room {c.room}</span>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading…</div>
+        ) : todaysClasses.length === 0 ? (
+          <div style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: 14, padding: 40, textAlign: "center", color: "var(--text-muted)"
+          }}>
+            No classes scheduled for today.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {todaysClasses.map((c) => {
+              const isActive = activeSession?.classId === c.classId;
+              return (
+                <div key={c.classId} style={{
+                  background: isActive ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
+                  border: `1px solid ${isActive ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
+                  borderRadius: 14, padding: "18px 24px",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  transition: "all 0.2s"
+                }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 12,
+                      background: c.type === "Lab" ? "var(--accent-purple-dim)" : c.type === "Tutorial" ? "var(--accent-amber-dim)" : "var(--accent-blue-dim)",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0
+                    }}>
+                      {c.type === "Lab" ? "⚗" : c.type === "Tutorial" ? "◈" : "▦"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{c.course}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", gap: 8 }}>
+                        <span style={{ fontFamily: "monospace", color: "var(--accent-blue)" }}>{c.slot}</span>
+                        <span>·</span>
+                        <span>Room {c.room}</span>
+                      </div>
                     </div>
                   </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className={c.type === "Lab" ? "badge badge-purple" : c.type === "Tutorial" ? "badge badge-amber" : "badge badge-blue"}>
+                      {c.type}
+                    </span>
+                    {isActive ? (
+                      <span className="badge badge-green">● Active</span>
+                    ) : (
+                      <button className="btn-success" onClick={() => startAttendance(c)} style={{ padding: "8px 16px", fontSize: 13 }}>
+                        Start Attendance
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className={c.type === "Lab" ? "badge badge-purple" : c.type === "Tutorial" ? "badge badge-amber" : "badge badge-blue"}>
-                    {c.type}
-                  </span>
-                  {isActive ? (
-                    <span className="badge badge-green">● Active</span>
-                  ) : (
-                    <button className="btn-success" onClick={() => startAttendance(c)} style={{ padding: "8px 16px", fontSize: 13 }}>
-                      Start Attendance
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

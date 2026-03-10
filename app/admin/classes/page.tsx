@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useData } from "@/app/store/dataStore";
+
+const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function ClassesPage() {
   const { classes, setClasses, professors } = useData();
@@ -10,16 +12,46 @@ export default function ClassesPage() {
   const [courseCode, setCourseCode] = useState("");
   const [profId, setProfId] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/api/classes/`)
+      .then(r => r.json())
+      .then(data => {
+        setClasses(data.map((c: any) => ({
+          id: c.id,
+          classId: c.course_code,
+          courseName: c.course_name,
+          courseCode: c.course_code,
+          profId: ""
+        })));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const addClass = () => {
     if (!classId || !courseName || !courseCode || !profId) { alert("Fill all fields"); return; }
     if (classes.find((c: any) => c.classId === classId)) { alert("ClassID already exists"); return; }
-    setClasses([...classes, { classId, courseName, courseCode, profId }]);
-    setClassId(""); setCourseName(""); setCourseCode(""); setProfId("");
-    setShowForm(false);
+    fetch(`${API}/api/classes/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ course_code: courseCode, course_name: courseName })
+    })
+      .then(r => r.json())
+      .then(data => {
+        setClasses([...classes, { id: data.id, classId, courseName, courseCode, profId }]);
+        setClassId(""); setCourseName(""); setCourseCode(""); setProfId("");
+        setShowForm(false);
+      })
+      .catch(() => alert("Failed to add class"));
   };
 
-  const deleteClass = (id: string) => setClasses(classes.filter((c: any) => c.classId !== id));
+  const deleteClass = (id: number, classId: string) => {
+    fetch(`${API}/api/classes/${id}/`, { method: "DELETE" })
+      .then(() => setClasses(classes.filter((c: any) => c.classId !== classId)))
+      .catch(() => alert("Failed to delete class"));
+  };
 
   return (
     <div>
@@ -38,9 +70,7 @@ export default function ClassesPage() {
           background: "var(--bg-card)", border: "1px solid var(--border-bright)",
           borderRadius: 16, padding: 24, marginBottom: 24
         }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>
-            New Class
-          </h3>
+          <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Class</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Class ID</label>
@@ -75,7 +105,9 @@ export default function ClassesPage() {
       <div className="animate-in-delay-1" style={{
         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden"
       }}>
-        {classes.length === 0 ? (
+        {loading ? (
+          <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>Loading...</div>
+        ) : classes.length === 0 ? (
           <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⬡</div>
             <div style={{ fontSize: 14 }}>No classes created yet.</div>
@@ -83,13 +115,7 @@ export default function ClassesPage() {
         ) : (
           <table className="dark-table">
             <thead>
-              <tr>
-                <th>Class ID</th>
-                <th>Course Name</th>
-                <th>Code</th>
-                <th>Professor</th>
-                <th>Actions</th>
-              </tr>
+              <tr><th>Class ID</th><th>Course Name</th><th>Code</th><th>Professor</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {classes.map((c: any) => {
@@ -100,7 +126,7 @@ export default function ClassesPage() {
                     <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{c.courseName}</td>
                     <td><span className="badge badge-amber">{c.courseCode}</span></td>
                     <td style={{ color: "var(--text-secondary)" }}>{prof ? prof.name : <span style={{ color: "var(--accent-red)", fontSize: 12 }}>Unknown</span>}</td>
-                    <td><button className="btn-danger" onClick={() => deleteClass(c.classId)}>Delete</button></td>
+                    <td><button className="btn-danger" onClick={() => deleteClass(c.id, c.classId)}>Delete</button></td>
                   </tr>
                 );
               })}

@@ -2,23 +2,41 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useData } from "@/app/store/dataStore";
+
+const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState("admin");
+  const { setCurrentUser } = useData();
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    if (!userId || !password) { setError("Please enter your ID and password"); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    router.push(`/${role}`);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/login/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid credentials");
+        setLoading(false);
+        return;
+      }
+      setCurrentUser(data);
+      router.push(`/${data.role}`);
+    } catch {
+      setError("Could not connect to server");
+      setLoading(false);
+    }
   };
-
-  const roles = [
-    { value: "admin", label: "Administrator", icon: "⬡", desc: "Full system control" },
-    { value: "professor", label: "Professor", icon: "◈", desc: "Manage attendance" },
-    { value: "student", label: "Student", icon: "◎", desc: "View your records" },
-  ];
 
   return (
     <div style={{
@@ -67,42 +85,45 @@ export default function LoginPage() {
           padding: "32px 32px",
           backdropFilter: "blur(12px)",
         }}>
-          <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 12 }}>
-            Select Role
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
-            {roles.map((r) => (
-              <button
-                key={r.value}
-                onClick={() => setRole(r.value)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 14,
-                  padding: "14px 16px",
-                  borderRadius: 12,
-                  border: role === r.value
-                    ? "1px solid var(--accent-blue)"
-                    : "1px solid var(--border)",
-                  background: role === r.value
-                    ? "var(--accent-blue-dim)"
-                    : "var(--bg-surface)",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 22, color: role === r.value ? "var(--accent-blue)" : "var(--text-muted)" }}>
-                  {r.icon}
-                </span>
-                <span>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: role === r.value ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                    {r.label}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{r.desc}</div>
-                </span>
-              </button>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                Student Reg No / Professor ID
+              </label>
+              <input
+                className="input-dark"
+                style={{ width: "100%", boxSizing: "border-box" }}
+                placeholder="e.g. 21BCE1234 or P101"
+                value={userId}
+                onChange={e => setUserId(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleLogin()}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>
+                Password
+              </label>
+              <input
+                className="input-dark"
+                style={{ width: "100%", boxSizing: "border-box" }}
+                type="password"
+                placeholder="Your default password is your ID"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleLogin()}
+              />
+            </div>
           </div>
+
+          {error && (
+            <div style={{
+              background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 8, padding: "10px 14px", marginBottom: 16,
+              fontSize: 13, color: "var(--accent-red)"
+            }}>
+              {error}
+            </div>
+          )}
 
           <button
             className="btn-primary"
@@ -112,10 +133,14 @@ export default function LoginPage() {
           >
             {loading ? "Signing in…" : "Sign In →"}
           </button>
+
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 16, textAlign: "center" }}>
+            Default password is your registration number / professor ID
+          </p>
         </div>
 
         <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, marginTop: 20 }}>
-          Attendance Manager v1.0 · Demo Mode
+          Attendance Manager v1.0
         </p>
       </div>
     </div>

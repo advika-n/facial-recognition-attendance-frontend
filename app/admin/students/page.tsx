@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useData } from "@/app/store/dataStore";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function StudentsPage() {
   const { students, setStudents } = useData();
