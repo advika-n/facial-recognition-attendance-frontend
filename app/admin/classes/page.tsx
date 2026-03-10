@@ -20,10 +20,10 @@ export default function ClassesPage() {
       .then(data => {
         setClasses(data.map((c: any) => ({
           id: c.id,
-          classId: c.course_code,
+          classId: c.class_id,
           courseName: c.course_name,
           courseCode: c.course_code,
-          profId: ""
+          profId: c.professor_id
         })));
         setLoading(false);
       })
@@ -36,7 +36,7 @@ export default function ClassesPage() {
     fetch(`${API}/api/classes/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ course_code: courseCode, course_name: courseName })
+      body: JSON.stringify({ class_id: classId, course_code: courseCode, course_name: courseName, professor_id: profId })
     })
       .then(r => r.json())
       .then(data => {
@@ -82,7 +82,7 @@ export default function ClassesPage() {
             </div>
             <div>
               <label style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Course Code</label>
-              <input className="input-dark" placeholder="e.g. CSE201" value={courseCode} onChange={e => setCourseCode(e.target.value)} />
+              <input className="input-dark" placeholder="e.g. CS301" value={courseCode} onChange={e => setCourseCode(e.target.value)} />
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12 }}>

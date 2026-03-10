@@ -5,25 +5,17 @@ import { useData } from "@/app/store/dataStore";
 
 const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
-const THEORY_SLOTS = [
-  "A1","A2","B1","B2","C1","C2","D1","D2","E1","E2","F1","F2","G1","G2",
-  "TB1","TB2","TC1","TC2","TD1","TD2","TE1","TE2","TF1","TF2","TG1","TG2",
-  "S1","S2","S3","S4"
-];
-const LAB_SLOTS = Array.from({ length: 60 }, (_, i) => `L${i + 1}`);
-const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function TimetablePage() {
   const { timetable, setTimetable, classes, classrooms } = useData();
   const [type, setType] = useState("Theory");
   const [day, setDay] = useState("Monday");
-  const [slot, setSlot] = useState("A1");
+  const [slot, setSlot] = useState("");
   const [classId, setClassId] = useState("");
   const [classroom, setClassroom] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  const slots = type === "Lab" ? LAB_SLOTS : THEORY_SLOTS;
 
   useEffect(() => {
     fetch(`${API}/api/timetable/`)
@@ -36,7 +28,8 @@ export default function TimetablePage() {
           slot: e.slot,
           classId: e.class_id,
           classroom: e.classroom,
-          courseName: e.course_name
+          courseName: e.course_name,
+          profId: e.professor_id
         })));
         setLoading(false);
       })
@@ -44,7 +37,7 @@ export default function TimetablePage() {
   }, []);
 
   const addEntry = () => {
-    if (!classId || !classroom) { alert("Fill all fields"); return; }
+    if (!classId || !classroom || !slot) { alert("Fill all fields"); return; }
     const conflict = timetable.find((e: any) =>
       e.day === day && e.slot === slot && (e.classroom === classroom || e.classId === classId)
     );
@@ -59,13 +52,14 @@ export default function TimetablePage() {
         slot_type: type,
         day,
         slot,
-        classroom
+        classroom,
+        professor_id: cls?.profId || ""
       })
     })
       .then(r => r.json())
       .then(data => {
-        setTimetable([...timetable, { id: data.id, type, day, slot, classId, classroom, courseName: cls?.courseName || "" }]);
-        setClassId(""); setClassroom("");
+        setTimetable([...timetable, { id: data.id, type, day, slot, classId, classroom, courseName: cls?.courseName || "", profId: cls?.profId || "" }]);
+        setSlot(""); setClassId(""); setClassroom("");
         setShowForm(false);
       })
       .catch(() => alert("Failed to add timetable entry"));
@@ -100,7 +94,7 @@ export default function TimetablePage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Type</label>
-              <select className="input-dark" value={type} onChange={e => { setType(e.target.value); setSlot(e.target.value === "Lab" ? "L1" : "A1"); }}>
+              <select className="input-dark" value={type} onChange={e => setType(e.target.value)}>
                 <option>Theory</option>
                 <option>Tutorial</option>
                 <option>Lab</option>
@@ -114,9 +108,7 @@ export default function TimetablePage() {
             </div>
             <div>
               <label style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Slot</label>
-              <select className="input-dark" value={slot} onChange={e => setSlot(e.target.value)}>
-                {slots.map(s => <option key={s}>{s}</option>)}
-              </select>
+              <input className="input-dark" placeholder="e.g. A1 or L31" value={slot} onChange={e => setSlot(e.target.value)} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Class ID</label>
