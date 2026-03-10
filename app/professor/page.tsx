@@ -24,7 +24,7 @@ export default function ProfessorPage() {
       .then(r => r.json())
       .then(data => {
         const filtered = data
-          .filter((t: any) => t.day === today)
+          .filter((t: any) => t.day === today && t.professor_id === currentUser.professor_id)
           .map((t: any) => ({
             classId: t.class_id,
             course: t.course_name,
