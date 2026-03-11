@@ -12,6 +12,7 @@ export default function ProfessorPage() {
   const [todaysClasses, setTodaysClasses] = useState<any[]>([]);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState("");
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "professor") {
@@ -38,12 +39,36 @@ export default function ProfessorPage() {
       .catch(() => setLoading(false));
   }, [currentUser]);
 
-  const startAttendance = (c: any) => setActiveSession({ ...c, startTime: Date.now() });
-  const endSession = () => setActiveSession(null);
+  const startAttendance = async (c: any) => {
+    setSessionError("");
+    try {
+      const res = await fetch(`${API}/api/start-lecture/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          class_id: c.classId,
+          classroom: c.room,
+          duration_minutes: 60
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActiveSession({ ...c, startTime: Date.now(), lectureId: data.lecture_id });
+      } else {
+        setSessionError(data.error || "Failed to start session");
+      }
+    } catch {
+      setSessionError("Could not connect to backend");
+    }
+  };
+
+  const endSession = () => {
+    setActiveSession(null);
+    setSessionError("");
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-base)", padding: "32px 36px", fontFamily: "DM Sans, sans-serif" }}>
-      {/* Header */}
       <div className="animate-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
         <div>
           <h1 style={{ fontFamily: "Syne", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
@@ -64,7 +89,16 @@ export default function ProfessorPage() {
         </div>
       </div>
 
-      {/* Active session banner */}
+      {sessionError && (
+        <div style={{
+          background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+          borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+          color: "var(--accent-red)", fontSize: 13
+        }}>
+          ⚠ {sessionError}
+        </div>
+      )}
+
       {activeSession && (
         <div className="animate-in" style={{
           background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06))",
@@ -97,7 +131,6 @@ export default function ProfessorPage() {
         </div>
       )}
 
-      {/* Today's Classes */}
       <div className="animate-in-delay-1">
         <h2 style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
           Today's Schedule
