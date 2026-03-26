@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useData } from "@/app/store/dataStore";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,9 @@ export default function ProfessorPage() {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState("");
+  const [liveAttendance, setLiveAttendance] = useState<any[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "professor") {
@@ -39,17 +42,35 @@ export default function ProfessorPage() {
       .catch(() => setLoading(false));
   }, [currentUser]);
 
+  // Poll live attendance every 5 seconds when session is active
+  useEffect(() => {
+    if (activeSession?.lectureId) {
+      setLiveLoading(true);
+      const fetchAttendance = () => {
+        fetch(`${API}/api/lecture/${activeSession.lectureId}/attendance/`)
+          .then(r => r.json())
+          .then(data => {
+            setLiveAttendance(data.attendance || []);
+            setLiveLoading(false);
+          })
+          .catch(() => setLiveLoading(false));
+      };
+      fetchAttendance();
+      pollRef.current = setInterval(fetchAttendance, 5000);
+    } else {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setLiveAttendance([]);
+    }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [activeSession]);
+
   const startAttendance = async (c: any) => {
     setSessionError("");
     try {
       const res = await fetch(`${API}/api/start-lecture/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          class_id: c.classId,
-          classroom: c.room,
-          duration_minutes: 60
-        })
+        body: JSON.stringify({ class_id: c.classId, classroom: c.room, duration_minutes: 60 })
       });
       const data = await res.json();
       if (res.ok) {
@@ -65,10 +86,22 @@ export default function ProfessorPage() {
   const endSession = () => {
     setActiveSession(null);
     setSessionError("");
+    setLiveAttendance([]);
   };
+
+  const formatTime = (iso: string) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+  };
+
+  const sessionDuration = activeSession
+    ? Math.floor((Date.now() - activeSession.startTime) / 60000)
+    : 0;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-base)", padding: "32px 36px", fontFamily: "DM Sans, sans-serif" }}>
+
+      {/* Header */}
       <div className="animate-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
         <div>
           <h1 style={{ fontFamily: "Syne", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
@@ -89,6 +122,7 @@ export default function ProfessorPage() {
         </div>
       </div>
 
+      {/* Error */}
       {sessionError && (
         <div style={{
           background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
@@ -99,11 +133,12 @@ export default function ProfessorPage() {
         </div>
       )}
 
+      {/* Active session banner */}
       {activeSession && (
         <div className="animate-in" style={{
           background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06))",
           border: "1px solid rgba(16,185,129,0.3)",
-          borderRadius: 16, padding: "20px 24px", marginBottom: 28,
+          borderRadius: 16, padding: "20px 24px", marginBottom: 24,
           display: "flex", justifyContent: "space-between", alignItems: "center"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -115,14 +150,14 @@ export default function ProfessorPage() {
                 Attendance Session Active
               </div>
               <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>
-                {activeSession.course} · {activeSession.classId} · Room {activeSession.room} · Slot {activeSession.slot}
+                {activeSession.course} · Room {activeSession.room} · Slot {activeSession.slot} · {sessionDuration}m elapsed
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Camera device</div>
-              <div style={{ fontSize: 13, color: "var(--accent-green)", fontWeight: 600 }}>● Scanning…</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Present</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent-green)", fontFamily: "Syne" }}>{liveAttendance.length}</div>
             </div>
             <button className="btn-danger" onClick={endSession} style={{ padding: "8px 16px", fontSize: 13 }}>
               End Session
@@ -131,6 +166,53 @@ export default function ProfessorPage() {
         </div>
       )}
 
+      {/* Live attendance table */}
+      {activeSession && (
+        <div className="animate-in" style={{
+          background: "var(--bg-card)", border: "1px solid var(--border)",
+          borderRadius: 16, overflow: "hidden", marginBottom: 28
+        }}>
+          <div style={{
+            padding: "16px 20px", borderBottom: "1px solid var(--border)",
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <h2 style={{ fontFamily: "Syne", fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+              Live Attendance
+            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-green)", animation: "pulse-ring 2s infinite" }} />
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Auto-refreshing every 5s</span>
+            </div>
+          </div>
+
+          {liveLoading && liveAttendance.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>Loading...</div>
+          ) : liveAttendance.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+              No students marked yet. Waiting for face recognition...
+            </div>
+          ) : (
+            <table className="dark-table">
+              <thead>
+                <tr><th>#</th><th>Name</th><th>Reg No</th><th>Department</th><th>Time Marked</th></tr>
+              </thead>
+              <tbody>
+                {liveAttendance.map((a: any, i: number) => (
+                  <tr key={a.registration_number}>
+                    <td style={{ color: "var(--text-muted)", fontSize: 12 }}>{i + 1}</td>
+                    <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{a.name}</td>
+                    <td><span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--accent-green)" }}>{a.registration_number}</span></td>
+                    <td><span className="badge badge-blue" style={{ fontSize: 11 }}>{a.department || "—"}</span></td>
+                    <td style={{ color: "var(--accent-amber)", fontFamily: "monospace", fontSize: 12 }}>{formatTime(a.time_marked)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Today's schedule */}
       <div className="animate-in-delay-1">
         <h2 style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 16 }}>
           Today's Schedule

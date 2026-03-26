@@ -6,11 +6,9 @@ import { DataProvider } from "../store/dataStore";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "▦" },
-  { href: "/admin/professors", label: "Professors", icon: "◈" },
-  { href: "/admin/classes", label: "Classes", icon: "⬡" },
   { href: "/admin/students", label: "Students", icon: "◎" },
-  { href: "/admin/enrollment", label: "Enrollment", icon: "⊕" },
-  { href: "/admin/classrooms", label: "Classrooms", icon: "⬜" },
+  { href: "/admin/professors", label: "Professors", icon: "◈" },
+  { href: "/admin/classes", label: "Classes & Rooms", icon: "⬡" },
   { href: "/admin/timetable", label: "Timetable", icon: "⊞" },
   { href: "/admin/reports", label: "Reports", icon: "▤" },
 ];
@@ -60,7 +58,7 @@ function Sidebar() {
       {/* Nav */}
       <nav style={{ padding: "12px 12px", flex: 1 }}>
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}

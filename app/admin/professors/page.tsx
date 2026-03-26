@@ -14,6 +14,7 @@ export default function ProfessorsPage() {
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/professors/`)
@@ -45,11 +46,17 @@ export default function ProfessorsPage() {
       .catch(() => setFormError("Failed to add professor. Please try again."));
   };
 
-  const deleteProfessor = (id: number, profId: string) => {
+  const deleteProfessor = (id: number, pId: string) => {
     fetch(`${API}/api/professors/${id}/`, { method: "DELETE" })
-      .then(() => { setProfessors(professors.filter((p: any) => p.profId !== profId)); setConfirmDeleteId(null); })
+      .then(() => { setProfessors(professors.filter((p: any) => p.profId !== pId)); setConfirmDeleteId(null); })
       .catch(() => setConfirmDeleteId(null));
   };
+
+  const filtered = professors.filter((p: any) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.profId.toLowerCase().includes(search.toLowerCase()) ||
+    (p.dept || "").toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div>
@@ -66,21 +73,19 @@ export default function ProfessorsPage() {
       </div>
 
       <div style={{
-        display: "grid",
-        gridTemplateRows: showForm ? "1fr" : "0fr",
-        transition: "grid-template-rows 0.3s ease",
-        marginBottom: showForm ? 24 : 0,
+        display: "grid", gridTemplateRows: showForm ? "1fr" : "0fr",
+        transition: "grid-template-rows 0.3s ease", marginBottom: showForm ? 24 : 0,
       }}>
         <div style={{ overflow: "hidden" }}>
-          <div style={{
-            background: "var(--bg-card)", border: "1px solid var(--border-bright)",
-            borderRadius: 16, padding: 24,
-          }}>
+          <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-bright)", borderRadius: 16, padding: 24 }}>
             <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Professor</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 12 }}>
-              <input className="input-dark" placeholder="Professor ID (e.g. P101)" value={profId} onChange={e => { setProfId(e.target.value); setFormError(""); }} />
-              <input className="input-dark" placeholder="Full Name" value={name} onChange={e => { setName(e.target.value); setFormError(""); }} />
-              <input className="input-dark" placeholder="Department (e.g. CSE)" value={dept} onChange={e => { setDept(e.target.value); setFormError(""); }} />
+              <input className="input-dark" placeholder="Professor ID (e.g. P101)" value={profId}
+                onChange={e => { setProfId(e.target.value); setFormError(""); }} />
+              <input className="input-dark" placeholder="Full Name" value={name}
+                onChange={e => { setName(e.target.value); setFormError(""); }} />
+              <input className="input-dark" placeholder="Department (e.g. CSE)" value={dept}
+                onChange={e => { setDept(e.target.value); setFormError(""); }} />
               <button className="btn-primary" onClick={addProfessor} style={{ whiteSpace: "nowrap" }}>Add</button>
             </div>
             {formError && (
@@ -95,6 +100,12 @@ export default function ProfessorsPage() {
       <div className="animate-in-delay-1" style={{
         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden"
       }}>
+        {!loading && professors.length > 0 && (
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+            <input className="input-dark" placeholder="Search by name, ID or department..."
+              value={search} onChange={e => setSearch(e.target.value)} style={{ maxWidth: 360 }} />
+          </div>
+        )}
         {loading ? (
           <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>Loading...</div>
         ) : professors.length === 0 ? (
@@ -105,13 +116,15 @@ export default function ProfessorsPage() {
               + Add your first professor
             </div>
           </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>No professors match "{search}".</div>
         ) : (
           <table className="dark-table">
             <thead>
               <tr><th>Professor ID</th><th>Name</th><th>Department</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {professors.map((p: any) => (
+              {filtered.map((p: any) => (
                 <tr key={p.profId}>
                   <td><span className="badge badge-blue" style={{ fontFamily: "monospace", fontSize: 11 }}>{p.profId}</span></td>
                   <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{p.name}</td>
@@ -121,7 +134,7 @@ export default function ProfessorsPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Are you sure?</span>
                         <button className="btn-danger" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => deleteProfessor(p.id, p.profId)}>Yes</button>
-                        <button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                        <button style={{ padding: "4px 10px", fontSize: 12, background: "transparent", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-muted)", cursor: "pointer" }} onClick={() => setConfirmDeleteId(null)}>Cancel</button>
                       </div>
                     ) : (
                       <button className="btn-danger" onClick={() => setConfirmDeleteId(p.id)}>Delete</button>
