@@ -42,7 +42,7 @@ function StatCard({ label, value, icon, color, delay }: any) {
 }
 
 export default function AdminDashboard() {
-  const { students, professors, classes, enrollments, timetable } = useData();
+  const { students, professors, classes, enrollments, timetable, classrooms } = useData();
 
   const stats = [
     { label: "Total Students", value: students.length || 0, icon: "◎", color: "#3b82f6", delay: 1 },
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
           <div style={{ padding: "8px 0" }}>
             {[
               { label: "Timetable entries", value: timetable.length, icon: "⊞", color: "var(--accent-blue)" },
-              { label: "Classrooms registered", value: 0, icon: "⬜", color: "var(--accent-purple)" },
+              { label: "Classrooms registered", value: classrooms.length, icon: "⬜", color: "var(--accent-purple)" },
               { label: "Active semester", value: "2025–26 Sem 1", icon: "◷", color: "var(--accent-green)" },
             ].map(item => (
               <div key={item.label} style={{

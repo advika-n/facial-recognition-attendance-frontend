@@ -36,9 +36,9 @@ export default function StudentPage() {
       .catch(() => setLoading(false));
   }, [currentUser]);
 
-  const overall = courses.length > 0
-    ? Math.round(courses.reduce((sum, c) => sum + (c.total > 0 ? (c.attended / c.total) * 100 : 0), 0) / courses.length)
-    : 0;
+  const totalAttended = courses.reduce((sum, c) => sum + (c.attended || 0), 0);
+  const totalClasses = courses.reduce((sum, c) => sum + (c.total || 0), 0);
+  const overall = totalClasses > 0 ? Math.round((totalAttended / totalClasses) * 100) : 0;
 
   const atRisk = courses.filter(c => c.total > 0 && (c.attended / c.total) * 100 < 75).length;
 
