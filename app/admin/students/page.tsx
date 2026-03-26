@@ -10,7 +10,9 @@ export default function StudentsPage() {
   const [regNo, setRegNo] = useState("");
   const [name, setName] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API}/api/students/`)
@@ -22,9 +24,13 @@ export default function StudentsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const openForm = () => { setShowForm(true); setFormError(""); };
+  const closeForm = () => { setShowForm(false); setFormError(""); setRegNo(""); setName(""); };
+
   const addStudent = () => {
-    if (!regNo || !name) { alert("Fill all fields"); return; }
-    if (students.find((s: any) => s.regNo === regNo)) { alert("Student already exists"); return; }
+    if (!regNo || !name) { setFormError("Please fill in all fields."); return; }
+    if (students.find((s: any) => s.regNo === regNo)) { setFormError("A student with this registration number already exists."); return; }
+    setFormError("");
     fetch(`${API}/api/students/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -33,16 +39,15 @@ export default function StudentsPage() {
       .then(r => r.json())
       .then(data => {
         setStudents([...students, { id: data.id, regNo, name }]);
-        setRegNo(""); setName("");
-        setShowForm(false);
+        closeForm();
       })
-      .catch(() => alert("Failed to add student"));
+      .catch(() => setFormError("Failed to add student. Please try again."));
   };
 
   const deleteStudent = (id: number, regNo: string) => {
     fetch(`${API}/api/students/${id}/`, { method: "DELETE" })
-      .then(() => setStudents(students.filter((s: any) => s.regNo !== regNo)))
-      .catch(() => alert("Failed to delete student"));
+      .then(() => { setStudents(students.filter((s: any) => s.regNo !== regNo)); setConfirmDeleteId(null); })
+      .catch(() => setConfirmDeleteId(null));
   };
 
   return (
@@ -52,24 +57,37 @@ export default function StudentsPage() {
           <h1 style={{ fontFamily: "Syne", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Students</h1>
           <p style={{ color: "var(--text-muted)", marginTop: 4, fontSize: 14 }}>{students.length} student{students.length !== 1 ? "s" : ""} registered</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
+        <button className="btn-primary" onClick={showForm ? closeForm : openForm}>
           {showForm ? "Cancel" : "+ Add Student"}
         </button>
       </div>
 
-      {showForm && (
-        <div className="animate-in" style={{
-          background: "var(--bg-card)", border: "1px solid var(--border-bright)",
-          borderRadius: 16, padding: 24, marginBottom: 24
-        }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Student</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12 }}>
-            <input className="input-dark" placeholder="Registration Number (e.g. 21BCE1234)" value={regNo} onChange={e => setRegNo(e.target.value)} />
-            <input className="input-dark" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} />
-            <button className="btn-primary" onClick={addStudent}>Add</button>
+      {/* Form with smooth slide animation */}
+      <div style={{
+        display: "grid",
+        gridTemplateRows: showForm ? "1fr" : "0fr",
+        transition: "grid-template-rows 0.3s ease",
+        marginBottom: showForm ? 24 : 0,
+      }}>
+        <div style={{ overflow: "hidden" }}>
+          <div style={{
+            background: "var(--bg-card)", border: "1px solid var(--border-bright)",
+            borderRadius: 16, padding: 24,
+          }}>
+            <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Student</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12 }}>
+              <input className="input-dark" placeholder="Registration Number (e.g. 21BCE1234)" value={regNo} onChange={e => { setRegNo(e.target.value); setFormError(""); }} onKeyDown={e => e.key === "Enter" && addStudent()} />
+              <input className="input-dark" placeholder="Full Name" value={name} onChange={e => { setName(e.target.value); setFormError(""); }} onKeyDown={e => e.key === "Enter" && addStudent()} />
+              <button className="btn-primary" onClick={addStudent}>Add</button>
+            </div>
+            {formError && (
+              <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, fontSize: 13, color: "var(--accent-red)" }}>
+                ⚠ {formError}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <div className="animate-in-delay-1" style={{
         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden"
@@ -91,7 +109,17 @@ export default function StudentsPage() {
                 <tr key={s.regNo}>
                   <td><span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--accent-green)" }}>{s.regNo}</span></td>
                   <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{s.name}</td>
-                  <td><button className="btn-danger" onClick={() => deleteStudent(s.id, s.regNo)}>Delete</button></td>
+                  <td>
+                    {confirmDeleteId === s.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Are you sure?</span>
+                        <button className="btn-danger" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => deleteStudent(s.id, s.regNo)}>Yes</button>
+                        <button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button className="btn-danger" onClick={() => setConfirmDeleteId(s.id)}>Delete</button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

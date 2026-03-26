@@ -11,7 +11,9 @@ export default function ProfessorsPage() {
   const [name, setName] = useState("");
   const [dept, setDept] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API}/api/professors/`)
@@ -23,9 +25,13 @@ export default function ProfessorsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const openForm = () => { setShowForm(true); setFormError(""); };
+  const closeForm = () => { setShowForm(false); setFormError(""); setProfId(""); setName(""); setDept(""); };
+
   const addProfessor = () => {
-    if (!profId || !name || !dept) { alert("Fill all fields"); return; }
-    if (professors.find((p: any) => p.profId === profId)) { alert("Professor ID already exists"); return; }
+    if (!profId || !name || !dept) { setFormError("Please fill in all fields."); return; }
+    if (professors.find((p: any) => p.profId === profId)) { setFormError("A professor with this ID already exists."); return; }
+    setFormError("");
     fetch(`${API}/api/professors/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,16 +40,15 @@ export default function ProfessorsPage() {
       .then(r => r.json())
       .then(data => {
         setProfessors([...professors, { id: data.id, profId, name, dept }]);
-        setProfId(""); setName(""); setDept("");
-        setShowForm(false);
+        closeForm();
       })
-      .catch(() => alert("Failed to add professor"));
+      .catch(() => setFormError("Failed to add professor. Please try again."));
   };
 
   const deleteProfessor = (id: number, profId: string) => {
     fetch(`${API}/api/professors/${id}/`, { method: "DELETE" })
-      .then(() => setProfessors(professors.filter((p: any) => p.profId !== profId)))
-      .catch(() => alert("Failed to delete professor"));
+      .then(() => { setProfessors(professors.filter((p: any) => p.profId !== profId)); setConfirmDeleteId(null); })
+      .catch(() => setConfirmDeleteId(null));
   };
 
   return (
@@ -55,25 +60,37 @@ export default function ProfessorsPage() {
             {professors.length} professor{professors.length !== 1 ? "s" : ""} registered
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
+        <button className="btn-primary" onClick={showForm ? closeForm : openForm}>
           {showForm ? "Cancel" : "+ Add Professor"}
         </button>
       </div>
 
-      {showForm && (
-        <div className="animate-in" style={{
-          background: "var(--bg-card)", border: "1px solid var(--border-bright)",
-          borderRadius: 16, padding: 24, marginBottom: 24,
-        }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Professor</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 12 }}>
-            <input className="input-dark" placeholder="Professor ID (e.g. P101)" value={profId} onChange={e => setProfId(e.target.value)} />
-            <input className="input-dark" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} />
-            <input className="input-dark" placeholder="Department" value={dept} onChange={e => setDept(e.target.value)} />
-            <button className="btn-primary" onClick={addProfessor} style={{ whiteSpace: "nowrap" }}>Add</button>
+      <div style={{
+        display: "grid",
+        gridTemplateRows: showForm ? "1fr" : "0fr",
+        transition: "grid-template-rows 0.3s ease",
+        marginBottom: showForm ? 24 : 0,
+      }}>
+        <div style={{ overflow: "hidden" }}>
+          <div style={{
+            background: "var(--bg-card)", border: "1px solid var(--border-bright)",
+            borderRadius: 16, padding: 24,
+          }}>
+            <h3 style={{ fontFamily: "Syne", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 16px" }}>New Professor</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 12 }}>
+              <input className="input-dark" placeholder="Professor ID (e.g. P101)" value={profId} onChange={e => { setProfId(e.target.value); setFormError(""); }} />
+              <input className="input-dark" placeholder="Full Name" value={name} onChange={e => { setName(e.target.value); setFormError(""); }} />
+              <input className="input-dark" placeholder="Department (e.g. CSE)" value={dept} onChange={e => { setDept(e.target.value); setFormError(""); }} />
+              <button className="btn-primary" onClick={addProfessor} style={{ whiteSpace: "nowrap" }}>Add</button>
+            </div>
+            {formError && (
+              <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, fontSize: 13, color: "var(--accent-red)" }}>
+                ⚠ {formError}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <div className="animate-in-delay-1" style={{
         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden"
@@ -84,7 +101,7 @@ export default function ProfessorsPage() {
           <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>◈</div>
             <div style={{ fontSize: 14 }}>No professors added yet.</div>
-            <div style={{ fontSize: 12, marginTop: 4, color: "var(--accent-blue)", cursor: "pointer" }} onClick={() => setShowForm(true)}>
+            <div style={{ fontSize: 12, marginTop: 4, color: "var(--accent-blue)", cursor: "pointer" }} onClick={openForm}>
               + Add your first professor
             </div>
           </div>
@@ -99,7 +116,17 @@ export default function ProfessorsPage() {
                   <td><span className="badge badge-blue" style={{ fontFamily: "monospace", fontSize: 11 }}>{p.profId}</span></td>
                   <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{p.name}</td>
                   <td><span className="badge badge-purple">{p.dept}</span></td>
-                  <td><button className="btn-danger" onClick={() => deleteProfessor(p.id, p.profId)}>Delete</button></td>
+                  <td>
+                    {confirmDeleteId === p.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Are you sure?</span>
+                        <button className="btn-danger" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => deleteProfessor(p.id, p.profId)}>Yes</button>
+                        <button className="btn-secondary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button className="btn-danger" onClick={() => setConfirmDeleteId(p.id)}>Delete</button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
