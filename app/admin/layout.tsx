@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin/professors", label: "Professors", icon: "◈" },
   { href: "/admin/classes", label: "Classes & Rooms", icon: "⬡" },
   { href: "/admin/timetable", label: "Timetable", icon: "⊞" },
+  { href: "/admin/faces", label: "Face Registration", icon: "◉" },
   { href: "/admin/reports", label: "Reports", icon: "▤" },
 ];
 
