@@ -16,6 +16,7 @@ export default function ProfessorPage() {
   const [liveAttendance, setLiveAttendance] = useState<any[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [sessionSummary, setSessionSummary] = useState<any>(null);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "professor") {
@@ -83,7 +84,29 @@ export default function ProfessorPage() {
     }
   };
 
-  const endSession = () => {
+  const endSession = async () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    // Fetch final attendance snapshot before clearing
+    if (activeSession?.lectureId) {
+      try {
+        const res = await fetch(`${API}/api/lecture/${activeSession.lectureId}/attendance/`);
+        const data = await res.json();
+        setSessionSummary({
+          course: activeSession.course,
+          room: activeSession.room,
+          slot: activeSession.slot,
+          type: activeSession.type,
+          durationMinutes: Math.floor((Date.now() - activeSession.startTime) / 60000),
+          date: data.date,
+          startTime: data.start_time,
+          endTime: data.end_time,
+          totalEnrolled: data.total_enrolled || 0,
+          attendance: data.attendance || [],
+        });
+      } catch {
+        setSessionSummary(null);
+      }
+    }
     setActiveSession(null);
     setSessionError("");
     setLiveAttendance([]);
@@ -130,6 +153,80 @@ export default function ProfessorPage() {
           color: "var(--accent-red)", fontSize: 13
         }}>
           ⚠ {sessionError}
+        </div>
+      )}
+
+      {/* Session Summary */}
+      {sessionSummary && (
+        <div className="animate-in" style={{
+          background: "var(--bg-card)", border: "1px solid var(--border)",
+          borderRadius: 16, overflow: "hidden", marginBottom: 28
+        }}>
+          {/* Summary header */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(99,102,241,0.06))",
+            borderBottom: "1px solid var(--border)", padding: "20px 24px",
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <div>
+              <div style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+                ◎ Session Summary
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
+                {sessionSummary.course} · Room {sessionSummary.room} · Slot {sessionSummary.slot} · {sessionSummary.durationMinutes}m
+              </div>
+            </div>
+            <button onClick={() => setSessionSummary(null)} style={{
+              background: "transparent", border: "1px solid var(--border)",
+              borderRadius: 8, padding: "6px 12px", color: "var(--text-muted)",
+              cursor: "pointer", fontSize: 12
+            }}>✕ Dismiss</button>
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderBottom: "1px solid var(--border)" }}>
+            {[
+              { label: "Present", value: sessionSummary.attendance.length, color: "var(--accent-green)" },
+              { label: "Enrolled", value: sessionSummary.totalEnrolled, color: "var(--accent-blue)" },
+              {
+                label: "Attendance %",
+                value: sessionSummary.totalEnrolled > 0
+                  ? `${Math.round((sessionSummary.attendance.length / sessionSummary.totalEnrolled) * 100)}%`
+                  : "—",
+                color: sessionSummary.totalEnrolled > 0 && (sessionSummary.attendance.length / sessionSummary.totalEnrolled) >= 0.75
+                  ? "var(--accent-green)" : "var(--accent-amber)"
+              },
+            ].map((stat) => (
+              <div key={stat.label} style={{ padding: "20px 24px", textAlign: "center", borderRight: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "Syne", color: stat.color }}>{stat.value}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Attendance list */}
+          {sessionSummary.attendance.length === 0 ? (
+            <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+              No students were marked present in this session.
+            </div>
+          ) : (
+            <table className="dark-table">
+              <thead>
+                <tr><th>#</th><th>Name</th><th>Reg No</th><th>Department</th><th>Time Marked</th></tr>
+              </thead>
+              <tbody>
+                {sessionSummary.attendance.map((a: any, i: number) => (
+                  <tr key={a.registration_number}>
+                    <td style={{ color: "var(--text-muted)", fontSize: 12 }}>{i + 1}</td>
+                    <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{a.name}</td>
+                    <td><span style={{ fontFamily: "monospace", fontSize: 12, color: "var(--accent-green)" }}>{a.registration_number}</span></td>
+                    <td><span className="badge badge-blue" style={{ fontSize: 11 }}>{a.department || "—"}</span></td>
+                    <td style={{ color: "var(--accent-amber)", fontFamily: "monospace", fontSize: 12 }}>{formatTime(a.time_marked)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
