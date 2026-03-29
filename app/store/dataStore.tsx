@@ -29,7 +29,7 @@ export function DataProvider({ children }: any) {
       setStudents(s.map((x: any) => ({ id: x.id, regNo: x.registration_number, name: x.name, dept: x.department || "" })))
       setProfessors(p.map((x: any) => ({ id: x.id, profId: x.professor_id, name: x.name, dept: x.department || "" })))
       setClasses(cl.map((x: any) => ({ id: x.id, classId: x.class_id, courseCode: x.course_code, courseName: x.course_name, profId: x.professor_id })))
-      setEnrollments(en.map((x: any) => ({ id: x.id, studentReg: x.student__registration_number, classId: x.course__course_code, courseName: x.course__course_name })))
+      setEnrollments(en.map((x: any) => ({ id: x.id, studentReg: x.student__registration_number, classId: x.course__class_id, courseName: x.course__course_name })))
       setClassrooms(cr.map((x: any) => ({ id: x.id, roomName: x.room_name, roomType: x.room_type })))
       setTimetable(tt)
       setDataLoaded(true)

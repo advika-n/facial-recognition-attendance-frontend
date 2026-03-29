@@ -83,7 +83,7 @@ export default function ClassesSetupPage() {
       })));
       setEnrollments(enr.map((e: any) => ({
         id: e.id, studentReg: e.student__registration_number,
-        classId: e.course__course_code, courseName: e.course__course_name
+        classId: e.course__class_id, courseName: e.course__course_name
       })));
       setLoading(false);
     }).catch(() => setLoading(false));
