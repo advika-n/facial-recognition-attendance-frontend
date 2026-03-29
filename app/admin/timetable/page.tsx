@@ -7,7 +7,7 @@ const API = "https://facial-recognition-attendance-backend-production.up.railway
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function TimetablePage() {
-  const { timetable, setTimetable, classes, classrooms } = useData();
+  const { timetable, setTimetable, classes, classrooms, dataLoaded } = useData();
   const [type, setType] = useState("Theory");
   const [day, setDay] = useState("Monday");
   const [slot, setSlot] = useState("");
@@ -19,6 +19,7 @@ export default function TimetablePage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (dataLoaded) { setLoading(false); return; }
     fetch(`${API}/api/timetable/`)
       .then(r => r.json())
       .then(data => {
@@ -35,7 +36,7 @@ export default function TimetablePage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [dataLoaded]);
 
   const openForm = () => { setShowForm(true); setFormError(""); };
   const closeForm = () => { setShowForm(false); setFormError(""); setSlot(""); setClassId(""); setClassroom(""); };

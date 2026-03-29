@@ -6,11 +6,12 @@ import { useData } from "@/app/store/dataStore";
 const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function ReportsPage() {
-  const { students } = useData();
+  const { students, dataLoaded } = useData();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!dataLoaded) return;  // wait for dataStore to finish loading
     if (students.length === 0) { setLoading(false); return; }
 
     const fetchAll = async () => {
@@ -37,7 +38,7 @@ export default function ReportsPage() {
     };
 
     fetchAll();
-  }, [students]);
+  }, [students, dataLoaded]);
 
   const exportCSV = () => {
     const header = "Reg No,Name,Course,Total,Attended,Attendance %\n";

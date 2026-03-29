@@ -6,7 +6,7 @@ import { useData } from "@/app/store/dataStore";
 const API = "https://facial-recognition-attendance-backend-production.up.railway.app";
 
 export default function StudentsPage() {
-  const { students, setStudents } = useData();
+  const { students, setStudents, dataLoaded } = useData();
   const [regNo, setRegNo] = useState("");
   const [name, setName] = useState("");
   const [dept, setDept] = useState("");
@@ -17,6 +17,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (dataLoaded) { setLoading(false); return; }
     fetch(`${API}/api/students/`)
       .then(r => r.json())
       .then(data => {
@@ -26,7 +27,7 @@ export default function StudentsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [dataLoaded]);
 
   const openForm = () => { setShowForm(true); setFormError(""); };
   const closeForm = () => { setShowForm(false); setFormError(""); setRegNo(""); setName(""); setDept(""); };
